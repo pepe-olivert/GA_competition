@@ -1,6 +1,18 @@
 
 class GA:
 
+    # Module to read the instances
+    def readInstances(path):
+        with open(path, "r") as f:
+            text = f.read()
+        lines = text.strip().split('\n')
+        num_locations = int(lines[0].split()[1])
+        num_vehicles = int(lines[1].split()[1])
+
+        matrix_lines = [line.split() for line in lines[3:]]
+        distance_matrix = np.array(matrix_lines, dtype=int)
+        
+
     def read_problem_instance(self,problem_path):
         """
         TODO: Implementar método para leer una instancia del problema
