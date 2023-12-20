@@ -15,6 +15,8 @@ class GA:
         self.problem_path = problem_path
         self.best_solution = None 
         self.time_deadline = time_deadline 
+        self.best_fitness = None
+        
         #TODO : Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
         
 
@@ -36,18 +38,24 @@ class GA:
         Método para devolver la mejor solución encontrada hasta
         el momento
         """
-        ## TODO : 
-        pass
+        
+        return self.best_solution
 
 
-    def run(self):
+    def run(self,individuals=300):
         """
         Método que ejecuta el algoritmo genético. Debe crear la población inicial y
         ejecutar el bucle principal del algoritmo genético
         TODO: Se debe implementar aquí la lógica del algoritmo genético
         """
         n_location,n_vehicles,instance = self.read_problem_instance(self.problem_path)
-        
+        population = self.create_population(n_location,n_vehicles,individuals)
+        for s in population:
+            pass
+            """
+            Aqui hay que calcular el fitness de la solución
+            Comparas con self.best_fitness si > lo cambias y actualizas self.best_solution
+            """
         
         pass
 
