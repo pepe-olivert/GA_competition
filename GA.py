@@ -1,5 +1,5 @@
 import numpy as np
-
+import random
 
 class GA:
     def __init__(self,time_deadline,problem_path,**kwargs):
@@ -14,7 +14,7 @@ class GA:
         self.problem_path = problem_path
         self.best_solution = None 
         self.time_deadline = time_deadline 
-        #TODO: Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
+        #TODO : Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
         
 
     def read_problem_instance(self,problem_path):
@@ -35,7 +35,7 @@ class GA:
         Método para devolver la mejor solución encontrada hasta
         el momento
         """
-        #TODO
+        ## TODO : 
         pass
 
 
@@ -45,18 +45,43 @@ class GA:
         ejecutar el bucle principal del algoritmo genético
         TODO: Se debe implementar aquí la lógica del algoritmo genético
         """
-        self.read_problem_instance(self.problem_path)
+        n_location,n_vehicles,instance = self.read_problem_instance(self.problem_path)
+        
         pass
 
     def fitness(self,solution,dist_matrix):
+
         """
-        If the solution is in format : [[0,2,3,4,0][0,5,6,7,0]] We should calculate the fitness of that solution
+        If the solution is in format : [1,3,6,0,10,5,9,0,7,4,8,2] We should calculate the fitness of that solution
         as 1/total distance traveled by that salesman
         """
+    
         total_distance = 0
-        for salesman in solution:
-            for i in range(len(salesman) - 1):
-                origin = salesman[i]
-                destination = salesman[i + 1]
-                total_distance += dist_matrix[origin][destination]
-        return 1 / total_distance
+        origin = 0
+        for n in solution:
+            destination=n
+            total_distance += dist_matrix[origin][destination]
+            origin = n
+
+        destination=0
+        total_distance+=dist_matrix[origin][destination]
+        return 1/total_distance
+    
+    def create_individual(self,n_locations,n_vehicles):
+        aux = [0]*(n_vehicles-1)
+        rnge = list(range(1,n_locations))
+        individual = aux+rnge
+        random.shuffle(individual)
+
+        return individual
+    
+    def create_population(self,n_locations,n_vehicles,n_individuals):
+        population=[]
+        for i in range(n_individuals):
+            population.append(self.create_individual(n_locations,n_vehicles))
+        return population
+
+
+   
+
+
