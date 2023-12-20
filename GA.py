@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import itertools
 
 class GA:
     def __init__(self,time_deadline,problem_path,**kwargs):
@@ -47,6 +48,7 @@ class GA:
         """
         n_location,n_vehicles,instance = self.read_problem_instance(self.problem_path)
         
+        
         pass
 
     def fitness(self,solution,dist_matrix):
@@ -67,7 +69,7 @@ class GA:
         total_distance+=dist_matrix[origin][destination]
         return 1/total_distance
     
-    def create_individual(self,n_locations,n_vehicles):
+    def create_individual(self,n_locations,n_vehicles): ## THIS IS RANDOM SEARCH FUNCTION
         aux = [0]*(n_vehicles-1)
         rnge = list(range(1,n_locations))
         individual = aux+rnge
@@ -75,12 +77,71 @@ class GA:
 
         return individual
     
+    def random_search(self,n_locations,n_vehicles):
+        return self.create_individual(n_locations,n_vehicles)
+    
     def create_population(self,n_locations,n_vehicles,n_individuals):
         population=[]
         for i in range(n_individuals):
             population.append(self.create_individual(n_locations,n_vehicles))
         return population
+    
 
+
+    def greedy_heuristic(self,dist_matrix, n_vehicles,n_locations):
+      
+        routes = [[] for _ in range(n_vehicles)]
+        visited = set()
+        visited.add(0)  # Assuming the depot is at index 0
+
+        for route in routes:   # Initialize routes with the depot
+            route.append(0)
+
+        # Assign locations to vehicles
+        while len(visited) < n_locations:
+            for route in routes:
+                if len(visited) == n_locations:
+                    break
+                last_location = route[-1]
+                closest_distance = float('inf')
+                closest_location = None
+                for i in range(n_locations):
+                    if i not in visited and dist_matrix[last_location][i] < closest_distance:
+                        closest_distance = dist_matrix[last_location][i]
+                        closest_location = i
+                route.append(closest_location)
+                visited.add(closest_location)
+
+        for route in routes:
+            route.append(0)
+        routes = [r[:-1] for r in routes]
+        extended = list(itertools.chain.from_iterable(routes))
+        extended = extended[1:]
+        
+
+        return extended
+
+    def translate_solution(self,solution):
+        """
+        [1,3,6,0,10,5,9,0,7,4,8,2] to [[0,1,3,6,0],[0,10,5,9,0],[0,7,4,8,2,0]]
+        """
+        final = []
+        aux = [0]
+        for s in solution:
+            if s > 0:
+                aux.append(s)
+            else:
+                aux.append(0)
+                final.append(aux)
+                aux=[0]
+            
+        aux.append(0)
+        final.append(aux)
+        return final
+
+if __name__ == '__main__':
+    pass
+    ##print(GA(100,'prueba').translate_solution([1,3,6,0,10,5,9,0,7,4,8,2]))
 
    
 
