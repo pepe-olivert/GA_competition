@@ -77,7 +77,7 @@ class GA:
         total_distance+=dist_matrix[origin][destination]
         return 1/total_distance
     
-    def create_individual(self,n_locations,n_vehicles): ## THIS IS RANDOM SEARCH FUNCTION
+    def create_individual(self,n_locations,n_vehicles): 
         aux = [0]*(n_vehicles-1)
         rnge = list(range(1,n_locations))
         individual = aux+rnge
@@ -131,6 +131,7 @@ class GA:
 
     def translate_solution(self,solution):
         """
+        This function will translate our representation to the solution format imposed by the tournament.
         [1,3,6,0,10,5,9,0,7,4,8,2] to [[0,1,3,6,0],[0,10,5,9,0],[0,7,4,8,2,0]]
         """
         final = []
@@ -147,10 +148,86 @@ class GA:
         final.append(aux)
         return final
 
+    def extract_chromosome(self,solution):
+        """
+        [1,3,6,0,10,5,9,0,7,4,8,2] to [1,3,6],[10,5,9],[7,4,8,2]
+        This function will provide one of the routes of one salesman of the solution randomly.
+        Later, we will apply In-route mutation in that salesman/chromosome.
+        """
+        final = []
+        aux = []
+        for s in solution:
+            if s > 0:
+                aux.append(s)
+            else:
+                
+                final.append(aux) 
+                aux=[] 
+        
+        final.append(aux)
+        n = random.randint(0,len(final)-1)
+        return final[n]
+    
+    def in_route_mutation(self,chromosome):
+        """
+        This function applies In-route mutation where we act in one salesman in order to generate
+        the new population. An example of this function will be:
+        [10,13,14,8,9,16,12] to [10,9,8,14,13,16,12]
+        """
+        chromosome_length = len(chromosome)
+    
+        # Choose random indices for the subsection
+        start_idx = random.randint(0, chromosome_length - 1)
+        end_idx = random.randint(start_idx + 1, chromosome_length)
+        
+        # Select the subsection to be reversed
+        subsection = chromosome[start_idx:end_idx]
+        
+        # Perform in-route mutation by reversing the subsection
+        mutated_chromosome = chromosome[:start_idx] + subsection[::-1] + chromosome[end_idx:]
+        
+        return mutated_chromosome
+    
+    def cross_route_mutation(self,solution):
+        """
+        This function applies Cross-route mutation where we mutate the routes of different
+        salesmen in order to generate the new population
+        """
+
+        # Ensure there are at least two salesmen for mutation
+        if len(solution) < 2:
+            return solution
+        
+        # Choose two distinct random indices representing salesmen
+        salesman_1_idx, salesman_2_idx = random.sample(range(len(solution)), 2)
+        
+        # Select random subsections from the chosen salesmen
+        salesman_1 = solution[salesman_1_idx]
+        salesman_2 = solution[salesman_2_idx]
+        
+        # Ensure the subsections are not empty
+        if len(salesman_1) == 0 or len(salesman_2) == 0:
+            return solution
+        
+        # Choose random subsections within the salesmen
+        start_idx_1 = random.randint(0, len(salesman_1) - 1)
+        end_idx_1 = random.randint(start_idx_1 + 1, len(salesman_1))
+        
+        start_idx_2 = random.randint(0, len(salesman_2) - 1)
+        end_idx_2 = random.randint(start_idx_2 + 1, len(salesman_2))
+        
+        # Swap the subsections between the two salesmen
+        mutated_solution = solution.copy()
+        mutated_solution[salesman_1_idx] = salesman_1[:start_idx_1] + salesman_2[start_idx_2:end_idx_2] + salesman_1[end_idx_1:]
+        mutated_solution[salesman_2_idx] = salesman_2[:start_idx_2] + salesman_1[start_idx_1:end_idx_1] + salesman_2[end_idx_2:]
+        
+        return mutated_solution
+
+
 if __name__ == '__main__':
     pass
-    ##print(GA(100,'prueba').translate_solution([1,3,6,0,10,5,9,0,7,4,8,2]))
-
-   
+    #print(GA(100,'prueba').extract_chromosome([1,3,6,0,10,5,9,0,7,4,8,2]))
+    #print(GA(100,'prueba').in_route_mutation([1,3,6]))
+    print(GA(100,'prueba').cross_route_mutation([[1,3,6],[10,5,9],[7,4,8,2]]))
 
 
