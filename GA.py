@@ -147,13 +147,10 @@ class GA:
         aux.append(0)
         final.append(aux)
         return final
+    
 
-    def extract_chromosome(self,solution):
-        """
-        [1,3,6,0,10,5,9,0,7,4,8,2] to [1,3,6],[10,5,9],[7,4,8,2]
-        This function will provide one of the routes of one salesman of the solution randomly.
-        Later, we will apply In-route mutation in that salesman/chromosome.
-        """
+    def transform_solution(self,solution):
+
         final = []
         aux = []
         for s in solution:
@@ -165,6 +162,26 @@ class GA:
                 aux=[] 
         
         final.append(aux)
+
+        return final
+    
+    def inverted_transformation(self,solution):
+        final = []
+        for i,elem in enumerate(solution):
+            for n in elem:
+                final.append(n)
+            if i !=len(solution)-1:
+                final.append(0)
+
+        return final
+
+    def extract_chromosome(self,solution):
+        """
+        [1,3,6,0,10,5,9,0,7,4,8,2] to [1,3,6],[10,5,9],[7,4,8,2]
+        This function will provide one of the routes of one salesman of the solution randomly.
+        Later, we will apply In-route mutation in that salesman/chromosome.
+        """
+        final = self.transform_solution(solution)
         n = random.randint(0,len(final)-1)
         return final[n]
     
@@ -195,19 +212,21 @@ class GA:
         """
 
         # Ensure there are at least two salesmen for mutation
-        if len(solution) < 2:
-            return solution
+        final = self.transform_solution(solution)
+
+        if len(final) < 2:
+            return final
         
         # Choose two distinct random indices representing salesmen
-        salesman_1_idx, salesman_2_idx = random.sample(range(len(solution)), 2)
+        salesman_1_idx, salesman_2_idx = random.sample(range(len(final)), 2)
         
         # Select random subsections from the chosen salesmen
-        salesman_1 = solution[salesman_1_idx]
-        salesman_2 = solution[salesman_2_idx]
+        salesman_1 = final[salesman_1_idx]
+        salesman_2 = final[salesman_2_idx]
         
         # Ensure the subsections are not empty
         if len(salesman_1) == 0 or len(salesman_2) == 0:
-            return solution
+            return final
         
         # Choose random subsections within the salesmen
         start_idx_1 = random.randint(0, len(salesman_1) - 1)
@@ -217,17 +236,42 @@ class GA:
         end_idx_2 = random.randint(start_idx_2 + 1, len(salesman_2))
         
         # Swap the subsections between the two salesmen
-        mutated_solution = solution.copy()
-        mutated_solution[salesman_1_idx] = salesman_1[:start_idx_1] + salesman_2[start_idx_2:end_idx_2] + salesman_1[end_idx_1:]
-        mutated_solution[salesman_2_idx] = salesman_2[:start_idx_2] + salesman_1[start_idx_1:end_idx_1] + salesman_2[end_idx_2:]
+        mutated_final = final.copy()
+        mutated_final[salesman_1_idx] = salesman_1[:start_idx_1] + salesman_2[start_idx_2:end_idx_2] + salesman_1[end_idx_1:]
+        mutated_final[salesman_2_idx] = salesman_2[:start_idx_2] + salesman_1[start_idx_1:end_idx_1] + salesman_2[end_idx_2:]
         
-        return mutated_solution
+        return self.inverted_transformation(mutated_final)
+    
+    def crossover(self,solution1,solution2):
+        """
+        This function applies our own crossover to two different solutions and returns two childs.
+        The mechanism that has been followed will be explained in the paper.
+        """
 
+        
+        n = len(solution1)
+        c1 = [0] * n
+        c2 = [0] * n
+
+        c1[0] = solution2[n - 1]
+        c2[0] = solution1[n - 1]
+        c1[n - 1] = solution2[0]
+        c2[n - 1] = solution1[0]
+
+        for i in range(n):
+            for j in range(1, n - 1):
+                if solution2[i] == solution1[j]:
+                    c1[j] = solution2[j]
+                if solution1[i] == solution2[j]:
+                    c2[j] = solution1[j]
+
+        return c1, c2
 
 if __name__ == '__main__':
     pass
     #print(GA(100,'prueba').extract_chromosome([1,3,6,0,10,5,9,0,7,4,8,2]))
     #print(GA(100,'prueba').in_route_mutation([1,3,6]))
-    print(GA(100,'prueba').cross_route_mutation([[1,3,6],[10,5,9],[7,4,8,2]]))
-
+    #print(GA(100,'prueba').crossover([1,3,6,0,10,5,9,0,7,4,8,2],[8,7,4,0,1,3,6,0,10,5,9,2]))
+    #print(GA(100,'prueba').cross_route_mutation([1,3,6,0,10,5,9,0,7,4,8,2]))
+    
 
