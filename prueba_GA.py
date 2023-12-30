@@ -69,6 +69,7 @@ class GA:
         rnge = list(range(1,n_locations))
         individual = aux+rnge
         random.shuffle(individual)
+        return individual
     
     def create_population(self,n_locations,n_vehicles,n_individuals):
         population=[]
@@ -296,7 +297,7 @@ class GA:
             
             n_iter += 1
 
-        return self.translate_solution(population)
+        return self.translate_solution(self.best_solution)
         
     
     
