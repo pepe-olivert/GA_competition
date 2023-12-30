@@ -42,7 +42,7 @@ class GA:
         return self.best_solution
 
 
-    def run(self,individuals=300):
+    def run(self,individuals=300, crossovers= 10, max_iter=100, objective_error=1000):
         """
         Método que ejecuta el algoritmo genético. Debe crear la población inicial y
         ejecutar el bucle principal del algoritmo genético
@@ -50,14 +50,38 @@ class GA:
         """
         n_location,n_vehicles,instance = self.read_problem_instance(self.problem_path)
         population = self.create_population(n_location,n_vehicles,individuals)
-        for s in population:
-            pass
-            """
-            Aqui hay que calcular el fitness de la solución
-            Comparas con self.best_fitness si > lo cambias y actualizas self.best_solution
-            """
-        
-        pass
+        fitness = []
+        n_iter = 0
+        while self.best_fitness != None and self.best_fitness > objective_error and n_iter < max_iter:
+            for s in population:
+                f = self.fitness(s,instance)
+                fitness.append((f, s))
+                if self.best_fitness == None or f > self.best_fitness:
+                    self.best_fitness = f
+                    self.best_solution = s
+            for i in range(crossovers):
+                parent1, parent2 = self.select_parents(fitness)
+                child1, child2 = self.crossover(parent1, parent2)
+                _child1, n1 = self.extract_chromosome(child1)
+                _child2, n2 = self.extract_chromosome(child2)
+                _child1[n1] = self.in_route_mutation(_child1[n1])
+                _child2[n2] = self.in_route_mutation(_child2[n2])
+                child1 = self.inverted_transformation(_child1)
+                child2 = self.inverted_transformation(_child2)
+                child1 = self.cross_route_mutation(child1)
+                child2 = self.cross_route_mutation(child2)
+                f1 = self.fitness(child1, instance)
+                f2 = self.fitness(child2, instance)
+                fitness.append((f1, child1))
+                fitness.append((f2, child2))
+                if self.best_fitness == None or f1 > self.best_fitness:
+                    self.best_fitness = f1
+                    self.best_solution = child1
+                if self.best_fitness == None or f2 > self.best_fitness:
+                    self.best_fitness = f2
+                    self.best_solution = child2
+            population = self.select_population(fitness, individuals)
+            n_iter += 1
 
     def fitness(self,solution,dist_matrix):
 
@@ -183,7 +207,7 @@ class GA:
         """
         final = self.transform_solution(solution)
         n = random.randint(0,len(final)-1)
-        return final[n]
+        return final, n
     
     def in_route_mutation(self,chromosome):
         """
