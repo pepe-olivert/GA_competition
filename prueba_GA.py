@@ -121,7 +121,7 @@ class GA:
         total_distance+=dist_matrix[origin][destination]
         return 1/total_distance
     
-    def select_parent(self,population_fitness, n, m):
+    def select_parent(self,population_fitness, n=4, m=10):
         if n<m and n%2 == 0:
             #Randomly sample m individuals from population
             sampled_individuals = random.sample(population_fitness, m)
@@ -245,19 +245,20 @@ class GA:
 #in order to give the GA a good starting point (paper)
         #population = self.greedy_heuristic(instance,n_vehicles,n_locations)
 
-        '''Evaluate each solution and creating list with the fitness'''
-        fitness = []
-        for s in population:                                                                                                                                                            
-            f = self.fitness(s,instance)
-            fitness.append((f, s))
-            if self.best_fitness == None or f > self.best_fitness:          
-                self.best_fitness = f
-                self.best_solution = s
-
         n_iter = 0
         while (self.best_fitness != None and self.best_fitness > objective_error and n_iter < max_iter) or  self.best_fitness == None: #Termination condition
+
+            '''Evaluate each solution and creating list with the fitness'''
+            fitness = []
+            for s in population:                                                                                                                                                            
+                f = self.fitness(s,instance)
+                fitness.append((f, s))
+                if self.best_fitness == None or f > self.best_fitness:          
+                    self.best_fitness = f
+                    self.best_solution = s            
+            
             '''SELECT parent'''
-            parent1, parent2 = self.select_parents(fitness, n_location, n_vehicles)                                                    
+            parent1, parent2 = self.select_parents(fitness, n, m)                                                    
 
             for i in range(crossovers):  #Iterations specified in the configuration (10 by default)
 
