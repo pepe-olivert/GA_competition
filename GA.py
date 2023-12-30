@@ -3,15 +3,8 @@ import random
 import itertools
 
 class GA:
-    def __init__(self,time_deadline,problem_path,**kwargs):
-        """
-        Inicializador de los objetos de la clase. Usar
-        este método para hacer todo el trabajo previo y necesario
-        para configurar el algoritmo genético
-        Args:
-            problem_path: Cadena de texto que determina la ruta en la que se encuentra la definición del problema
-            time_deadline: Límite de tiempo que el algoritmo genético puede computar
-        """
+    def __init__(self,time_deadline,problem_path,**kwargs): #the default values for these parameters should be the best values found in the experimental optimization of the algorithm.
+
         self.problem_path = problem_path
         self.best_solution = None 
         self.time_deadline = time_deadline 
@@ -20,8 +13,8 @@ class GA:
         #TODO : Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
         
 
-    def read_problem_instance(self,problem_path):
-        
+    def read_problem_instance(self,problem_path): #Process the .txt file with the instance of the problem
+
         with open(problem_path, "r") as f:
             text = f.read()
         lines = text.strip().split('\n')
@@ -32,22 +25,15 @@ class GA:
         distance_matrix = np.array(matrix_lines, dtype=int)
 
         return num_locations,num_vehicles,distance_matrix
+    
 
-    def get_best_solution(self):
-        """
-        Método para devolver la mejor solución encontrada hasta
-        el momento
-        """
+    def get_best_solution(self):  #Returns best solution found up to any point. Have to be a list of lists (each list contains the tour taken by each vehicle)
         
         return self.best_solution
 
 
     def run(self,individuals=300, crossovers= 10, max_iter=100, objective_error=1000):
-        """
-        Método que ejecuta el algoritmo genético. Debe crear la población inicial y
-        ejecutar el bucle principal del algoritmo genético
-        TODO: Se debe implementar aquí la lógica del algoritmo genético
-        """
+
         n_location,n_vehicles,instance = self.read_problem_instance(self.problem_path)
         population = self.create_population(n_location,n_vehicles,individuals)
         fitness = []
@@ -121,7 +107,6 @@ class GA:
 
 
     def greedy_heuristic(self,dist_matrix, n_vehicles,n_locations):
-      
         routes = [[] for _ in range(n_vehicles)]
         visited = set()
         visited.add(0)  # Assuming the depot is at index 0
@@ -149,7 +134,6 @@ class GA:
         routes = [r[:-1] for r in routes]
         extended = list(itertools.chain.from_iterable(routes))
         extended = extended[1:]
-        
 
         return extended
 
@@ -174,19 +158,15 @@ class GA:
     
 
     def transform_solution(self,solution):
-
         final = []
         aux = []
         for s in solution:
             if s > 0:
                 aux.append(s)
             else:
-                
                 final.append(aux) 
                 aux=[] 
-        
         final.append(aux)
-
         return final
     
     def inverted_transformation(self,solution):
@@ -271,8 +251,6 @@ class GA:
         This function applies our own crossover to two different solutions and returns two childs.
         The mechanism that has been followed will be explained in the paper.
         """
-
-        
         n = len(solution1)
         c1 = [0] * n
         c2 = [0] * n
