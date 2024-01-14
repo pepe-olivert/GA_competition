@@ -1,2 +1,4 @@
-# GA_competition
-sexito
+# MTSP: Genetic algotihm implementation
+
+
+

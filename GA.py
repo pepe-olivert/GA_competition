@@ -3,6 +3,7 @@ import random
 import itertools
 import matplotlib.pyplot as plt
 
+
 class GA:
 
     def __init__(self,time_deadline,problem_path,**kwargs): #the default values for these parameters should be the best values found in the experimental optimization of the algorithm.
@@ -13,8 +14,10 @@ class GA:
 
         self.evolution = []
         
-        #TODO : Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
+        ##TODO : Completar método para configurar el algoritmo genético (e.g., seleccionar cruce, mutación, etc.)
+        ##TODO: Implementar tiempo máximo de ejecución y que te devuelva la mejor solución hasta ese momento 
 
+        
     def get_best_solution(self):  #Returns best solution found up to any point. Have to be a list of lists (each list contains the tour taken by each vehicle)
         
         return self.translate_solution(self.best_solution)
@@ -174,6 +177,13 @@ class GA:
         n = random.randint(0,len(final)-1)
         return final, n
     
+    def inversion_mutaion(self,chromosome):
+        index1, index2 = random.sample(range(len(chromosome)), 2)
+        start_index = min(index1, index2)
+        end_index = max(index1, index2)
+        inverted = chromosome[:start_index] + list(reversed(chromosome[start_index:end_index + 1])) + chromosome[end_index + 1:]
+        return inverted
+    
     def in_route_mutation(self,chromosome):
 
         chromosome_length = len(chromosome)
@@ -211,7 +221,7 @@ class GA:
         
         #Ensure the subsections are not empty
         if len(salesman_1) == 0 or len(salesman_2) == 0:
-            return final
+            return self.inverted_transformation(final)
         
         #Choose random subsections within the salesmen
         start_idx_1 = random.randint(0, len(salesman_1) - 1)
@@ -253,13 +263,71 @@ class GA:
         distances = [np.linalg.norm(np.array(individual) - np.array(ind)) for ind in population]
         return float(np.sum(distances) / len(distances))
     
-    def run(self,individuals=300, crossovers= 1, max_iter=100, objective_value=0.1):
-
+    def fitness_proportion_ranking_selection(self, fitness, k = 2):
+        # Linear ranking selection
+        # Sort individuals by fitness
+        #print(fitness[1])
+        #sorted_fitness = sorted(fitness, key=lambda x: x[0], reverse=True)
+        #print(sorted_fitness[1])
+        # Calculate selection probability for each individual
+        cummulative = sum(x[0] for x in fitness)
+        selection = []
+        selection_fitness = []
+        while len(selection) < k:
+            i = random.randint(0, len(fitness)-1)
+            f, ind = fitness[i]
+            r = random.random()
+            p = f/cummulative
+            if r < p:
+                selection.append(ind)
+                selection_fitness.append((f, ind))
+        #print(selection)
+        # Select two individuals
+        return selection, selection_fitness
+    
+    def linear_ranking_selection(self,fitness, s = 1.5, k = 2):
+        f = sorted(fitness)
+        selected = []
+        for i, ft in enumerate(f):
+            p = ((2-s)/len(f))+((2*i*(s-1))/(len(f)*(len(f)-1)))
+            r = random.random()
+            if r < p: 
+                selected.append(ft)
+            if len(selected) == k: break
+        if len(selected)<k:
+            selected = selected + list(f[-(k-len(selected)):])
+        return selected
+    
+    def exponential_ranking_selection(self,fitness, c = 0.5, k = 2):
+        f = sorted(fitness)
+        selected = []
+        for i, ft in enumerate(f):
+            p = ((c-1)/(c*len(f) -1))(c**(len(f)-i-1))
+            r = random.random()
+            if r < p: 
+                selected.append(ft)
+            if len(selected) == k: break
+        if len(selected)<k:
+            selected = selected + list(f[-(k-len(selected)):])
+        return selected
+    
+    def tournament_selection(self,fitness, k = 20, n= 2, p = 1):
+        selected = []
+        while len(selected) < n:
+            sample = random.sample(fitness, k = k)
+            r = random.random()
+            if r < p:
+                for j in range(1, len(sample)):
+                    best = sorted(sample)[-j]
+                    if best not in selected:
+                        selected.append(best)
+                        break
+        return selected
+    
+    def run(self,individuals=300, crossovers= 1, max_iter=100, objective_value=0.2, proba_selection = [0.5,0.5]):
         '''Initialize population'''
         n_location,n_vehicles,instance = self.read_problem_instance()          
         population = self.create_population(n_location,n_vehicles,individuals) 
-        greedy = self.greedy_heuristic(instance,n_vehicles,n_location)
-        print(self.fitness(greedy,instance))
         
         #each of the starting populations was seeded with a solution produced by a simple greedy heuristic 
         #in order to give the GA a good starting point (paper)
@@ -282,28 +350,39 @@ class GA:
 
                     
             for i in range(crossovers):  #Iterations specified in the configuration (10 by default)
-                '''SELECT parent'''
-                parents = self.select_parent(fitness, n = 2)
-                parent1 =  parents[0]        
-                parent2 =  parents[1]                                             
-
-                '''CROSSOVER'''                                                                                              
-                child1, child2 = self.inspired_crossover_DPX(parent1, parent2)                                                         
                 
-                '''MUTATION'''   
+                '''SELECT parent'''
+                if random.random() < proba_selection[0]:
+                    parents, _ = self.fitness_proportion_ranking_selection(fitness, k = 2)
+                    parent1 =  parents[0]        
+                    parent2 =  parents[1] 
+                else:
+                    parents = self.select_parent(fitness, n = 2)
+                    parent1 =  parents[0]        
+                    parent2 =  parents[1]   
+
+                                                   
+
+                '''CROSSOVER'''                                                                                            
+                child1, child2 = self.inspired_crossover_DPX(parent1, parent2)                  
+                
+                '''MUTATION''' 
+                #if random.random() < proba_mutation[0]:  
                 _child1, n1 = self.extract_chromosome(child1)
                 _child2, n2 = self.extract_chromosome(child2)
-
+               
                 _child1[n1] = self.in_route_mutation(_child1[n1])
                 _child2[n2] = self.in_route_mutation(_child2[n2])
 
                 child1 = self.inverted_transformation(_child1)
                 child2 = self.inverted_transformation(_child2)
 
+                #if random.random() < proba_mutation[1]:
                 child1 = self.cross_route_mutation(child1)
                 child2 = self.cross_route_mutation(child2)
 
                 '''EVALUATION'''
+                #print(child1)
                 f1 = self.fitness(child1, instance)
                 f2 = self.fitness(child2, instance)
 
@@ -320,10 +399,24 @@ class GA:
             
                 #selected_offspring = random.choice([child1, child2])      #This will continue with the diversity of the population but other methods can be implemented such as: selecting child with best fitness or by alternancy in each iteration.
                 #population, fitness = self.replace_cmin(fitness, selected_offspring)
-                    
+                
+                
                 population, fitness = self.replace_cmin(fitness, child1)
                 population, fitness = self.replace_cmin(fitness, child2)
             
+            if random.random() < proba_selection[1]:
+                population2 = self.create_population(n_location,n_vehicles,individuals)
+                for s in population2:                                                                                                                                                          
+                    f = self.fitness(s,instance)
+                    fitness.append((f, s))
+                    population.append(s)
+                    if self.best_fitness == None or f > self.best_fitness:          
+                        self.best_fitness = f
+                        self.best_solution = s
+            
+                population, fitness = self.fitness_proportion_ranking_selection(fitness, k = individuals)
+
+                    
             n_iter += 1
 
         return self.translate_solution(self.best_solution)
@@ -335,14 +428,14 @@ class GA:
 
         # plot lines
         fig = plt.figure(figsize=(10,5))
-        ax = fig.add_subplot(111)
-        ax.tick_params(axis='x', colors='white')    #setting up X-axis tick color to red
-        ax.tick_params(axis='y', colors='white')  #setting up Y-axis tick color to black
+        #ax = fig.add_subplot(111)
+        #ax.tick_params(axis='x', colors='white')    #setting up X-axis tick color to red
+        #ax.tick_params(axis='y', colors='white')  #setting up Y-axis tick color to black
 
         plt.plot(x, y)
         plt.show()
 
 if __name__ == '__main__':
-    a = GA(0,'instance1.txt')
-    a.run(max_iter=50)
-    print(a.get_best_solution(),a.best_fitness)
+    a = GA(0,'instances/instance1.txt')
+    a.run(max_iter=100)
+    a.plot_evolution()
