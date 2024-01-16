@@ -316,9 +316,9 @@ class GA:
                     mutated_salesmen+=([0]+salesman_modified)
             else:
                 if i==0:
-                    mutated_salesmen+=salesman_modified
+                    mutated_salesmen+=salesman[1:]
                 else:
-                    mutated_salesmen+=([0]+salesman_modified)
+                    mutated_salesmen+=(salesman)
         return mutated_salesmen
     
     def replace_cmin(self, fitness, offspring):
