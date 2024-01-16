@@ -298,6 +298,29 @@ class GA:
         
         return self.inverted_transformation(mutated_final)
     
+    def inroute_opt2_mutation(self,chromosome):
+        new = np.array([0]+chromosome)
+        idx = np.where(new == 0)[0]
+    
+        separations = np.split(new, idx)
+        subroutes = [subarray.tolist() for subarray in separations if len(subarray) > 0]
+        mutated_salesmen = []
+        for i,salesman in enumerate(subroutes):
+            if len(salesman) > 3:
+                salesman_modified = salesman[1:]
+                position1, position2 = random.sample(range(len(salesman_modified)), 2)
+                salesman_modified[position1], salesman_modified[position2] = salesman_modified[position2], salesman_modified[position1]
+                if i==0:
+                    mutated_salesmen+=salesman_modified
+                else:
+                    mutated_salesmen+=([0]+salesman_modified)
+            else:
+                if i==0:
+                    mutated_salesmen+=salesman_modified
+                else:
+                    mutated_salesmen+=([0]+salesman_modified)
+        return mutated_salesmen
+    
     def replace_cmin(self, fitness, offspring):
         # CD/RW strategy for replacing cmin
         cmin = min(fitness, key=lambda x: self.contribution_of_diversity(x[1], [ind[1] for ind in fitness]))
@@ -446,6 +469,10 @@ class GA:
                 #if random.random() < proba_mutation[1]:
                 child1 = self.cross_route_mutation(child1)
                 child2 = self.cross_route_mutation(child2)
+                
+                #if random.random() < proba_mutation[1]:
+                child1 = self.inroute_opt2_mutation(child1)
+                child2 = self.inroute_opt2_mutation(child2)
 
                 '''EVALUATION'''
                 #print(child1)
