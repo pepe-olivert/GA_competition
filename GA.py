@@ -2,15 +2,18 @@ import numpy as np
 import random
 import itertools
 import matplotlib.pyplot as plt
-
+import threading
+from sklearn.cluster import AgglomerativeClustering, SpectralClustering
 
 class GA:
 
-    def __init__(self,time_deadline,problem_path,**kwargs): #the default values for these parameters should be the best values found in the experimental optimization of the algorithm.
+    def __init__(self,time_deadline,problem_path,init="normal",mode="spectral",**kwargs): #the default values for these parameters should be the best values found in the experimental optimization of the algorithm.
         self.problem_path = problem_path
         self.best_solution = None 
         self.time_deadline = time_deadline 
         self.best_fitness = None
+        self.init = init
+        self.mode = mode
 
         self.evolution = []
         
@@ -85,6 +88,64 @@ class GA:
         for i in range(n_individuals):
             population.append(self.create_individual(n_locations,n_vehicles))
         return population
+    
+    def cluster_population(self,mode,individuals,n_location,n_vehicles,distance_matrix):
+        labels,locations,vehicles = self.cluster_initialization(mode=mode,n_location=n_location,n_vehicles=n_vehicles,distance_matrix=distance_matrix)
+        locs = np.arange(1,locations)
+        population_salesman = {str(i):[locs[j] for j in range(locations-1) if labels[j]==i] for i in range(vehicles)}
+        
+        population_initial = [[]]
+        individuals = individuals - 1
+        for i in range(vehicles-1):
+            for j in range(locations-1):
+                if labels[j]==i:
+                    population_initial[0].append(locs[j])
+            population_initial[0].append(0)
+        population_initial[0].extend(population_salesman[str(vehicles-1)])
+        
+        i = 1
+        while individuals > 0:
+            tours_altered = random.randint(1,vehicles)
+            ind = population_salesman.copy()
+
+            population_initial.append([])
+            for j in range(tours_altered):
+                vehicle = random.randint(0,vehicles-1)
+                ind[str(vehicle)] = random.sample(ind[str(vehicle)],len(ind[str(vehicle)]))  
+            
+            for j in range(vehicles-1):
+                population_initial[i].extend(ind[str(j)]+[0])
+            population_initial[i].extend(ind[str(vehicles-1)])
+            i += 1
+            individuals -= 1
+        
+        return population_initial
+    
+    def cluster_initialization(self,mode,n_location,n_vehicles,distance_matrix): 
+        """
+        Args:
+            individuals (int): number of individuals to initialize the population
+            mode (str): type of clustering technique to be applied. Only 'spectral' or 'agglomerative' 
+            are available
+        
+        Returns the labels of each city. Each cluster will be assigned initially to a salesman
+        """
+        #n_location,n_vehicles,distance_matrix = self.read_problem_instance() 
+        distance_matrix=np.array(distance_matrix)
+        distance_matrix=distance_matrix[1:,1:] #Skip the initial node distances
+        
+        if mode == "agglomerative":
+            c =AgglomerativeClustering(n_clusters=n_vehicles,metric="precomputed",linkage="complete")
+        
+        if mode == "spectral":
+            transf_matrix = distance_matrix
+            non_zero_indices = transf_matrix!=0
+            transf_matrix[non_zero_indices] = 9999 / transf_matrix[non_zero_indices]
+            c = SpectralClustering(n_clusters=n_vehicles,affinity="precomputed").fit(transf_matrix)
+        return c.fit(distance_matrix).labels_,n_location,n_vehicles
+
+
+    
     
     def greedy_heuristic(self,dist_matrix, n_vehicles,n_locations):
         routes = [[] for _ in range(n_vehicles)]
@@ -324,11 +385,13 @@ class GA:
                         break
         return selected
     
-    def run(self,individuals=300, crossovers= 1, max_iter=100, objective_value=0.2, proba_selection = [0.5,0.5]):
+    def run(self,event,individuals=300, crossovers= 1, max_iter=100, objective_value=0.2,proba_selection = [0.5,0.5]):
         '''Initialize population'''
-        n_location,n_vehicles,instance = self.read_problem_instance()          
-        population = self.create_population(n_location,n_vehicles,individuals) 
-        
+        n_location,n_vehicles,instance = self.read_problem_instance()     
+        if self.init == "normal":     
+            population = self.create_population(n_location,n_vehicles,individuals) 
+        else:
+            population = self.cluster_population(mode=self.mode,individuals=individuals,n_location=n_location,n_vehicles=n_vehicles,distance_matrix=instance)
         #each of the starting populations was seeded with a solution produced by a simple greedy heuristic 
         #in order to give the GA a good starting point (paper)
         #population = self.greedy_heuristic(instance,n_vehicles,n_locations)
@@ -347,9 +410,12 @@ class GA:
         while (self.best_fitness is not None and self.best_fitness < objective_value and n_iter < max_iter) or  self.best_fitness is None: #Termination condition
             print("Iteration: ", n_iter, end = "\r")
             self.evolution.append(self.best_fitness)
-
+            if event.is_set():
+                return self.translate_solution(self.best_solution)
                     
             for i in range(crossovers):  #Iterations specified in the configuration (10 by default)
+                if event.is_set():
+                    return self.translate_solution(self.best_solution)
                 
                 '''SELECT parent'''
                 if random.random() < proba_selection[0]:
@@ -434,8 +500,18 @@ class GA:
 
         plt.plot(x, y)
         plt.show()
+        
+    def run_with_timeout(self,event):
+        self.run(event=event)
+
 
 if __name__ == '__main__':
-    a = GA(0,'instances/instance1.txt')
-    a.run(max_iter=100)
-    a.plot_evolution()
+    event = threading.Event()
+    a = GA(time_deadline=10,problem_path='instances/instance1.txt',init="cluster",mode="spectral")
+    task_thread = threading.Thread(target= a.run_with_timeout,args=(event,))
+    task_thread.start()
+    task_thread.join(a.time_deadline)
+    event.set()
+    #a = GA(0,'instances/instance1.txt')
+    #a.run(max_iter=50,init="cluster",mode="agglomerative")
+    a.plot_evolution() 
