@@ -4,24 +4,12 @@ import itertools
 import matplotlib.pyplot as plt
 import threading
 from sklearn.cluster import AgglomerativeClustering, SpectralClustering
-import argparse
+
 
 
 class GA:
 
-    def __init__(self,time_deadline,problem_path,init="normal",mode="spectral",**kwargs): 
-        """
-        Initialize an instance of class GA given a time deadline and an instance path.
-
-        :param time_deadline: Max time of the execution.
-        :type time_deadline: int
-        :param problem_path: Path to a certain instance.
-        :type problem_path: str
-        :param init: Parameter to use cluster initialization or not.
-        :type init: str
-        :param mode: Specific parameter that indicates the mode of the clusters.
-        :type mode: str
-        """
+    def __init__(self,time_deadline,problem_path,init="normal",mode="spectral",**kwargs): #the default values for these parameters should be the best values found in the experimental optimization of the algorithm.
         self.problem_path = problem_path
         self.best_solution = None 
         self.time_deadline = time_deadline 
@@ -34,17 +22,11 @@ class GA:
         
 
         
-    def get_best_solution(self):  
-        """
-        Function to get the best solution of the execution of the GA and translated into the desired form.
-        """
+    def get_best_solution(self):  #Returns best solution found up to any point. Have to be a list of lists (each list contains the tour taken by each vehicle)
+        
         return self.translate_solution(self.best_solution)
 
-    def read_problem_instance(self): 
-        """
-        Function to read the problem instance given the instance path. You get the number of vehicles,
-        the number of locations and the distance matrix for future purposes.
-        """
+    def read_problem_instance(self): #Process the .txt file with the instance of the problem
         with open(self.problem_path, "r") as f:
             text = f.read()
         lines = text.strip().split('\n')
@@ -60,15 +42,6 @@ class GA:
     ''' ------------------- Auxiliar methods ------------------- '''
 
     def translate_solution(self,solution):
-        """
-        Function to translate the solution to the desired form.
-
-        :param solution: A given solution to translate.
-        :type solution: str
-
-        :return: The new solution.
-        :rtype: list
-        """
         final = []
         aux = [0]
         for s in solution:
@@ -84,15 +57,6 @@ class GA:
         return final
 
     def transform_solution(self,solution):
-        """
-        Function to encode a given solution in order to compute different crossovers and mutations.
-
-        :param solution: A given solution to translate.
-        :type solution: str
-
-        :return: The new solution.
-        :rtype: list
-        """
         final = []
         aux = []
         for s in solution:
@@ -105,16 +69,6 @@ class GA:
         return final
 
     def inverted_transformation(self,solution):
-        """
-        Function to invert the solution.
-
-        :param solution: A given solution to translate.
-        :type solution: str
-
-        :return: The new solution.
-        :rtype: list
-        """
-
         final = []
         for i,elem in enumerate(solution):
             for n in elem:
@@ -124,18 +78,6 @@ class GA:
         return final
     
     def create_individual(self,n_locations,n_vehicles): 
-        """
-        Function to randomly create an individual, given the locations and vehicles.
-
-        :param n_locations: Number of location.
-        :type n_locations: int
-        :param n_vehicles: Number of vehicles.
-        :type n_vehicles: int
-
-        :return: New individual.
-        :rtype: list
-        """
-
         aux = [0]*(n_vehicles-1)
         rnge = list(range(1,n_locations))
         individual = aux+rnge
@@ -143,42 +85,12 @@ class GA:
         return individual
     
     def create_population(self,n_locations,n_vehicles,n_individuals):
-        """
-        Function to create a population.
-
-        :param n_locations: Number of location.
-        :type n_locations: int
-        :param n_vehicles: Number of vehicles.
-        :type n_vehicles: int
-        :param n_individuals: Number of individuals.
-        :type n_individuals: int 
-
-        :return: The population.
-        :rtype: list
-        """
-
         population=[]
         for i in range(n_individuals):
             population.append(self.create_individual(n_locations,n_vehicles))
         return population
     
     def cluster_population(self,mode,individuals,n_location,n_vehicles,distance_matrix):
-        """
-        Function to create a population built upon clustering.
-
-        :param n_locations: Number of location.
-        :type n_locations: int
-        :param n_vehicles: Number of vehicles.
-        :type n_vehicles: int
-        :param n_individuals: Number of individuals.
-        :type n_individuals: int 
-        :param distance_matrix: Distance matrix.
-        :type distance_matrix: list
-
-        :return: The population.
-        :rtype: list
-        """
-
         labels,locations,vehicles = self.cluster_initialization(mode=mode,n_location=n_location,n_vehicles=n_vehicles,distance_matrix=distance_matrix)
         locs = np.arange(1,locations)
         population_salesman = {str(i):[locs[j] for j in range(locations-1) if labels[j]==i] for i in range(vehicles)}
@@ -212,22 +124,14 @@ class GA:
     
     def cluster_initialization(self,mode,n_location,n_vehicles,distance_matrix): 
         """
-        Function that initiatializates clustering
-
-        :param mode: Different modes of clusters.
-        :type mode: str
-        :type n_locations: int
-        :param n_vehicles: Number of vehicles.
-        :type n_vehicles: int
-        :param n_individuals: Number of individuals.
-        :type n_individuals: int 
-        :param distance_matrix: Distance matrix.
-        :type distance_matrix: list
+        Args:
+            individuals (int): number of individuals to initialize the population
+            mode (str): type of clustering technique to be applied. Only 'spectral' or 'agglomerative' 
+            are available
         
-        :return: The labels of each city. Each cluster will be assigned initially to a salesman.
-        :rtype: list
+        Returns the labels of each city. Each cluster will be assigned initially to a salesman
         """
-
+        #n_location,n_vehicles,distance_matrix = self.read_problem_instance() 
         distance_matrix=np.array(distance_matrix)
         distance_matrix=distance_matrix[1:,1:] #Skip the initial node distances
         
@@ -245,16 +149,6 @@ class GA:
     
     
     def greedy_heuristic(self,dist_matrix, n_vehicles,n_locations):
-        """
-        Function that applies the greedy heuristic search.
-
-        :param n_vehicles: Number of vehicles.
-        :type n_vehicles: int
-        :param n_individuals: Number of individuals.
-        :type n_individuals: int 
-        :param dist_matrix: Distance matrix.
-        :type dist_matrix: list
-        """
         routes = [[] for _ in range(n_vehicles)]
         visited = set()
         visited.add(0)  # Assuming the depot is at index 0
@@ -286,17 +180,10 @@ class GA:
         return population
     
     def fitness(self,solution,dist_matrix):
+    
         """
-        Function that, if the solution is in format : [1,3,6,0,10,5,9,0,7,4,8,2] (permutation representation) We should calculate the fitness of that solution
-        as 1/total distance traveled by that vehicle.
-
-        :param solution: A given solution.
-        :type solutions: list
-        :param dist_matrix: Distance matrix.
-        :type dist_matrix: list
-
-        :return: The compute of our fitness.
-        :rtype: float
+        If the solution is in format : [1,3,6,0,10,5,9,0,7,4,8,2] (permutation representation) We should calculate the fitness of that solution
+        as 1/total distance traveled by that vehicle
         """
         total_distance = 0
         origin = 0
@@ -310,19 +197,6 @@ class GA:
         return 1/total_distance
     
     def select_parent(self,population_fitness, n=4, m=100):
-        """
-        Select the optimal parent.
-
-        :param population_fitness: The population of the fitness.
-        :type population_fitness: list
-        :param n: Random number of individuals of the m samples.
-        :type n: int
-        :param m: Random number of individuals.
-        :type m: int
-
-        :return: The selected parents.
-        :rtype: list
-        """
         if n<m and n%2 == 0:
             #Randomly sample m individuals from population
             sampled_individuals = random.sample(population_fitness, m)
@@ -340,17 +214,6 @@ class GA:
             print("n is not less than m or n is not even")
 
     def inspired_crossover_DPX(self,parent1,parent2):
-        """
-        Function that computes the a crossover inspired in DPX.
-
-        :param parent1: Parent 1.
-        :type parent1: list
-        :param parent2: Parent 2.
-        :type parent2: list
-
-        :return: childs
-        :rtype: list
-        """
         n = len(parent1)
         c1 = [0] * n
         c2 = [0] * n
@@ -372,30 +235,11 @@ class GA:
         return c1, c2
     
     def extract_chromosome(self,solution):
-        """
-        Function to extract a chromosome of a solution. A chromose means a salesman.
-
-        :param solution: A given solution.
-        :type solution: list
-
-        :return: The chromosome and the index.
-        :rtype: list,int
-        """
-
         final = self.transform_solution(solution)
         n = random.randint(0,len(final)-1)
         return final, n
     
     def inversion_mutaion(self,chromosome):
-        """
-        Function that computes the inversion mutation given a chromosome.
-
-        :param chromosome: A given solution.
-        :type chromosome: list
-
-        :return: The returned from computing this mutation.
-        :rtype: list
-        """
         index1, index2 = random.sample(range(len(chromosome)), 2)
         start_index = min(index1, index2)
         end_index = max(index1, index2)
@@ -403,17 +247,7 @@ class GA:
         return inverted
     
     def in_route_mutation(self,chromosome):
-        """
-        Function that implements the in route mutation, mutation operator shown in a paper, 
-        optimal for MTSP.
 
-        :param chromosome: A given chromosome.
-        :type chromosome: list
-
-        :return mutated_crossover: The returned chromosome when applied this mutation operator.
-        :rtype mutated_crossover: list
-        """
-        
         chromosome_length = len(chromosome)
 
         # Choose random indices for the subsection
@@ -432,12 +266,6 @@ class GA:
         """
         This function applies Cross-route mutation where we mutate the routes of different
         salesmen in order to generate the new population
-
-        :param solution: A given solution.
-        :type solution: list
-
-        :return final: The returned chromosome when applied this mutation operator.
-        :rtype final: list
         """
 
         #Ensure there are at least two salesmen for mutation
@@ -472,15 +300,6 @@ class GA:
         return self.inverted_transformation(mutated_final)
     
     def inroute_opt2_mutation(self,chromosome):
-        """
-        Function to apply new type of mutation.
-
-        :param chromosome: A given chromosome.
-        :type chromosome: list
-
-        :return mutated_salesmen: The returned chromosome when applied this mutation operator.
-        :rtype mutated_salesmen: list
-        """
         new = np.array([0]+chromosome)
         idx = np.where(new == 0)[0]
     
@@ -504,15 +323,6 @@ class GA:
         return mutated_salesmen
     
     def replace_cmin(self, fitness, offspring):
-        """
-        Replace the least contributing individual in terms of diversity with offspring 
-        if it provides more diversity.
-
-        :param fitness: The fitness.
-        :type fitness: list
-        :param offspring: Children.
-        :type offspring: list
-        """
         # CD/RW strategy for replacing cmin
         cmin = min(fitness, key=lambda x: self.contribution_of_diversity(x[1], [ind[1] for ind in fitness]))
         fitness_without_cmin = [ind for ind in fitness if ind != cmin]
@@ -526,14 +336,6 @@ class GA:
         return [ind[1] for ind in fitness], fitness
 
     def replace_by_worst(self, fitness, offspring):
-        """
-        Replace the worst individual in the population with offspring.
-
-        :param fitness: The fitness.
-        :type fitness: list
-        :param offspring: Children.
-        :type offspring: list
-        """
         # RW strategy for replacing the worst individual
         worst_individual = max(fitness, key=lambda x: x[0])
         offspring_fitness = next(fit[0] for fit in fitness if fit[1] == offspring)
@@ -542,33 +344,16 @@ class GA:
             fitness.remove(worst_individual)
 
     def contribution_of_diversity(self, individual, population):
-        """
-        Calculate the contribution of diversity of an individual to a population based 
-        on the euclidean distance of the vectors.
-
-        :param individual: An individual.
-        :type individual: list
-        :param population: The population.
-        :type population: list
-
-        :return: List of the mean of distances.
-        :rtype: list
-        """
         # Calculate the contribution of diversity of an individual to a population based on the euclidean distance of the vectors
         distances = [np.linalg.norm(np.array(individual) - np.array(ind)) for ind in population]
         return float(np.sum(distances) / len(distances))
     
     def fitness_proportion_ranking_selection(self, fitness, k = 2):
-        """
-        Function to apply fitness proportion ranking selection to select the next population.
-
-        :param fitness: Fitness of the population
-        :type fitness: list
-
-        :return: list of selected individuals to pass to the next generation.
-        :rtype: list
-        """
-
+        # Linear ranking selection
+        # Sort individuals by fitness
+        #print(fitness[1])
+        #sorted_fitness = sorted(fitness, key=lambda x: x[0], reverse=True)
+        #print(sorted_fitness[1])
         # Calculate selection probability for each individual
         cummulative = sum(x[0] for x in fitness)
         selection = []
@@ -581,22 +366,11 @@ class GA:
             if r < p:
                 selection.append(ind)
                 selection_fitness.append((f, ind))
-        
+        #print(selection)
         # Select two individuals
         return selection, selection_fitness
     
     def linear_ranking_selection(self,fitness, s = 1.5, k = 2):
-        """
-        Function to apply linear ranking selection to select the next population.
-
-        :param fitness: Fitness of the population
-        :type fitness: list
-
-        :return: list of selected individuals to pass to the next generation.
-        :rtype: list
-        """
-
-
         f = sorted(fitness)
         selected = []
         for i, ft in enumerate(f):
@@ -610,16 +384,6 @@ class GA:
         return selected
     
     def exponential_ranking_selection(self,fitness, c = 0.5, k = 2):
-        """
-        Function to apply exponential ranking selection to select the next population.
-
-        :param fitness: Fitness of the population
-        :type fitness: list
-
-        :return: list of selected individuals to pass to the next generation.
-        :rtype: list
-        """
-
         f = sorted(fitness)
         selected = []
         for i, ft in enumerate(f):
@@ -633,16 +397,6 @@ class GA:
         return selected
     
     def tournament_selection(self,fitness, k = 20, n= 2, p = 1):
-        """
-        Function to apply tournament selection to select the next population.
-
-        :param fitness: Fitness of the population
-        :type fitness: list
-
-        :return: list of selected individuals to pass to the next generation.
-        :rtype: list
-        """
-        
         selected = []
         while len(selected) < n:
             sample = random.sample(fitness, k = k)
@@ -655,12 +409,8 @@ class GA:
                         break
         return selected
     
-    def run(self,individuals=300, crossovers= 1, max_iter=1000, objective_value=0.2,proba_selection = [0.5,0.5],proba_mutation=[0.33,0.33,0.33]):
-        """
-        Function to run the algorithm.
-
-        """
-        
+    def run(self,event,individuals=300, crossovers= 1, max_iter=100, objective_value=0.2,proba_selection = [0.5,0.5]):
+        proba_mutation=[0.33,0.33,0.33]
 
         '''Initialize population'''
         n_location,n_vehicles,instance = self.read_problem_instance()     
@@ -686,10 +436,12 @@ class GA:
         while (self.best_fitness is not None and self.best_fitness < objective_value and n_iter < max_iter) or  self.best_fitness is None: #Termination condition
             print("Iteration: ", n_iter, end = "\r")
             self.evolution.append(self.best_fitness)
-            
+            if event.is_set():
+                return self.translate_solution(self.best_solution)
                     
             for i in range(crossovers):  #Iterations specified in the configuration (10 by default)
-                
+                if event.is_set():
+                    return self.translate_solution(self.best_solution)
                 
                 '''SELECT parent'''
                 if random.random() < proba_selection[0]:
@@ -764,12 +516,26 @@ class GA:
 
         return self.translate_solution(self.best_solution)
 
-    
+    def plot_evolution(self):
+        
+        x = list(range(0,len(self.evolution[1:])))
+        y = [1/x for x in self.evolution[1:]]
+        plt.plot(x, y)
+        plt.show()
+        
+    def run_with_timeout(self,event):
+        self.run(event=event)
 
 
 if __name__ == '__main__':
+    event = threading.Event()
     a = GA(time_deadline=180,problem_path='instances/instance1.txt',init="cluster",mode="spectral")
-    try:print(a.run())
-    except:print(a.get_best_solution())
+    try:
+        task_thread = threading.Thread(target= a.run_with_timeout,args=(event,))
+        task_thread.start()
+        task_thread.join(a.time_deadline)
+        event.set()
+        print(a.get_best_solution())
+        
 
-    
+    except: print(a.get_best_solution())
