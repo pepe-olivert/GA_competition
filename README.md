@@ -16,6 +16,10 @@ git clone https://github.com/pepe-olivert/GA_competition.git
 
 Once you have it downloaded just execute GA.py and check it out!
 
+```bash
+python3 GA.py
+```
+
 *Please note: Make sure to have python installed in your machine.*
 
 ## Contributing
