@@ -1,10 +1,7 @@
 import numpy as np
 import random
 import itertools
-import matplotlib.pyplot as plt
-import threading
 from sklearn.cluster import AgglomerativeClustering, SpectralClustering
-import argparse
 
 
 class GA:
@@ -901,9 +898,6 @@ class GA:
     
 
 
-if __name__ == '__main__':
-    a = GA(time_deadline=180,problem_path='instances/instance1.txt')
-    try:print(a.run(),1/a.best_fitness)
-    except:print(a.get_best_solution(),1/a.best_fitness)
+
 
     

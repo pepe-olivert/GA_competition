@@ -16,9 +16,20 @@ git clone https://github.com/pepe-olivert/GA_competition.git
 
 Once you have it downloaded just execute GA.py and check it out!
 
+Add into your GA.py the following code in order to make it run:
+```python
+if __name__ == '__main__':
+    a = GA(time_deadline=180,problem_path='instances/instance1.txt')
+    try:print(a.run(),1/a.best_fitness)
+    except:print(a.get_best_solution(),1/a.best_fitness)
+```
+And then just execute it:
+
 ```bash
 python3 GA.py
 ```
+
+
 
 *Please note: Make sure to have python installed in your machine.*
 
