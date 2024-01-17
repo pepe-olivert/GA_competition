@@ -1,4 +1,4 @@
-# MTSP: Genetic algotihm implementation
+# MTSP: Genetic algorithm implementation
 
 ## Introduction 
 The Multiple Traveling Salesman Problem is an extension of the classic Traveling Salesman Problem, which seeks to find the shortest possible route that visits each city in a given set and returns to the starting city. In the MTSP, there are multiple salesmen who start from a central depot, visit a subset of cities, and return to the depot. The goal is to minimize the total distance traveled by all salesmen while ensuring that every city is visited exactly once.
