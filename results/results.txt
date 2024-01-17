@@ -1,2 +1,0 @@
-instance01 -> 60, 100 iterations
-instance02 -> 90, 100 iterations

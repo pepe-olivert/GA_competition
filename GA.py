@@ -9,7 +9,7 @@ import argparse
 
 class GA:
 
-    def __init__(self,time_deadline,problem_path,init="normal",mode="spectral",**kwargs): 
+    def __init__(self,time_deadline,problem_path,init="cluster",mode="agglomerative",**kwargs): 
         """
         Initialize an instance of class GA given a time deadline and an instance path.
 
@@ -415,16 +415,18 @@ class GA:
         """
         
         chromosome_length = len(chromosome)
+        if chromosome_length != 0:
 
-        # Choose random indices for the subsection
-        start_idx = random.randint(0, chromosome_length - 1)
-        end_idx = random.randint(start_idx + 1, chromosome_length)
-        
-        # Select the subsection to be reversed
-        subsection = chromosome[start_idx:end_idx]
-        
-        # Perform in-route mutation by reversing the subsection
-        mutated_chromosome = chromosome[:start_idx] + subsection[::-1] + chromosome[end_idx:]
+            # Choose random indices for the subsection
+            start_idx = random.randint(0, chromosome_length - 1)
+            end_idx = random.randint(start_idx + 1, chromosome_length)
+            
+            # Select the subsection to be reversed
+            subsection = chromosome[start_idx:end_idx]
+            
+            # Perform in-route mutation by reversing the subsection
+            mutated_chromosome = chromosome[:start_idx] + subsection[::-1] + chromosome[end_idx:]
+        else: mutated_chromosome = chromosome
         
         return mutated_chromosome
     
@@ -444,7 +446,7 @@ class GA:
         final = self.transform_solution(solution)
 
         if len(final) < 2:
-            return final
+            return self.inverted_transformation(final)
         
         #Choose two distinct random indices representing salesmen
         salesman_1_idx, salesman_2_idx = random.sample(range(len(final)), 2)
@@ -581,9 +583,33 @@ class GA:
             if r < p:
                 selection.append(ind)
                 selection_fitness.append((f, ind))
-        
         # Select two individuals
         return selection, selection_fitness
+    
+    def inverse_fitness_proportion_ranking_selection(self, fitness, k = 2):
+        """
+        Function to apply inversed fitness proportion ranking selection to select the next population.
+
+        :param fitness: Fitness of the population
+        :type fitness: list
+
+        :return: list of selected individuals to pass to the next generation.
+        :rtype: list
+        """
+        
+        # Calculate selection probability for each individual
+        cummulative = sum(x[0] for x in fitness)
+        selection = []
+        while len(selection) < k:
+            i = random.randint(0, len(fitness)-1)
+            f, ind = fitness[i]
+            r = random.random()
+            p = 1 - f/cummulative
+            if r < p:
+                selection.append(i)
+       
+        # Select two individuals
+        return selection
     
     def linear_ranking_selection(self,fitness, s = 1.5, k = 2):
         """
@@ -597,17 +623,30 @@ class GA:
         """
 
 
-        f = sorted(fitness)
+        # Sort individuals by fitness
+        sorted_fitness = sorted(fitness, key=lambda x: x[0])
+        # Initialize variables
         selected = []
-        for i, ft in enumerate(f):
-            p = ((2-s)/len(f))+((2*i*(s-1))/(len(f)*(len(f)-1)))
+        selection_fitness = []
+        for i, (f, ind) in enumerate(sorted_fitness):
+            # Calculate selection probability
+            p = ((2 - s) / len(sorted_fitness)) + ((2 * i * (s - 1)) / (len(sorted_fitness) * (len(sorted_fitness) - 1)))
+            # Random number for selection
             r = random.random()
-            if r < p: 
-                selected.append(ft)
-            if len(selected) == k: break
-        if len(selected)<k:
-            selected = selected + list(f[-(k-len(selected)):])
-        return selected
+            if r < p:
+                selected.append(ind)
+                selection_fitness.append((f, ind))
+            # Break the loop if we have selected enough individuals
+            if len(selected) == k:
+                break
+        # If not enough individuals are selected, fill the rest randomly
+        if len(selected) < k:
+            remaining = k - len(selected)
+            random_selection = random.sample(sorted_fitness[-remaining:], remaining)
+            selected.extend(ind for f, ind in random_selection)
+            selection_fitness.extend(random_selection)
+
+        return selected, selection_fitness
     
     def exponential_ranking_selection(self,fitness, c = 0.5, k = 2):
         """
@@ -655,7 +694,101 @@ class GA:
                         break
         return selected
     
-    def run(self,individuals=300, crossovers= 1, max_iter=1000, objective_value=0.2,proba_selection = [0.5,0.5],proba_mutation=[0.33,0.33,0.33]):
+    def PMX_crossover(self, parent1, parent2, seed=42):
+        '''
+        Function to apply the PMX crossover
+
+        :param parent1: First parent.
+        :type parent1: list
+        :param parent2: First parent.
+        :type parent2: list
+
+        :return: The children.
+        :rtype: list,list
+        '''
+        rng = np.random.default_rng(seed=seed)
+        next = -1
+        for i in range(len(parent1)):
+            if parent1[i] == 0:
+                parent1[i]= next
+                next -= 1
+        
+        next = -1
+        for i in range(len(parent2)):
+            if parent2[i] == 0:
+                parent2[i]= next
+                next -= 1
+        parent1, parent2 = np.array(parent1, dtype=int), np.array(parent2, dtype = int)
+
+        cutoff_1, cutoff_2 = np.sort(rng.choice(np.arange(len(parent1)+1), size=2, replace=False))
+
+        def PMX_one_offspring(p1, p2):
+            offspring = np.zeros(len(p1), dtype=p1.dtype)
+
+            # Copy the mapping section (middle) from parent1
+            offspring[cutoff_1:cutoff_2] = p1[cutoff_1:cutoff_2]
+
+            # copy the rest from parent2 (provided it's not already there
+            for i in np.concatenate([np.arange(0,cutoff_1), np.arange(cutoff_2,len(p1))]):
+                candidate = p2[i]
+                while candidate in p1[cutoff_1:cutoff_2] and candidate: # allows for several successive mappings
+                    #print(f"Candidate {candidate} not valid in position {i}") # DEBUGONLY
+                    candidate = p2[np.where(p1 == candidate)[0][0]]
+                offspring[i] = candidate
+            offspring = list(offspring)
+            offspring = [x*int(x > 0) for x in offspring]
+            return offspring
+
+        offspring1 = PMX_one_offspring(parent1, parent2)
+        offspring2 = PMX_one_offspring(parent2, parent1)
+
+        return offspring1, offspring2
+    
+    def flip_insert_mutation(self,chromosome):
+        """
+        Function to apply flip insert mutation.
+
+        :param chromosome: A given chromosome.
+        :type chromosome: list
+        """
+        new = np.array([0]+chromosome)
+        idx = np.where(new == 0)[0]
+    
+        separations = np.split(new, idx)
+        subroutes = [subarray.tolist()[1:] for subarray in separations if len(subarray) > 0]
+        mutated_salesman = []
+        new_salesman = [0]*len(chromosome)
+        for sub in subroutes: 
+            mutated_salesman.extend(sub)
+      
+        id1, id2 = random.sample(range(1, len(mutated_salesman)-1), 2)
+        mutated_salesman[id1],mutated_salesman[id2] = mutated_salesman[id2],mutated_salesman[id1]
+        
+        mutated_salesman[id1:id2+1] = reversed(mutated_salesman[id1:id2+1])
+
+        new_ids = []
+        for id in idx[1:]:
+            if id-1 < len(mutated_salesman)-1 and id-1 > 1:
+                id_n = id-1 + random.choice([-1,0,1])
+            elif id-1 >= len(mutated_salesman)-1:
+                id_n = id-1 - random.choice([0,1])
+            elif id-1 <= 1:
+                id_n = id-1 + random.choice([0,1])
+            new_ids.append(id_n)
+        
+      
+        j = 0
+        for i,value in enumerate(mutated_salesman):
+            if i in new_ids:
+                new_salesman[j] = 0
+                j += 1
+            new_salesman[j] = value
+            j += 1
+            
+        return new_salesman
+    
+    
+    def run(self,individuals=300, crossovers= 1, max_iter=10000000, objective_value=0.2,proba_selection = [0.5,0.5]):
         """
         Function to run the algorithm.
 
@@ -668,9 +801,7 @@ class GA:
             population = self.create_population(n_location,n_vehicles,individuals) 
         else:
             population = self.cluster_population(mode=self.mode,individuals=individuals,n_location=n_location,n_vehicles=n_vehicles,distance_matrix=instance)
-        #each of the starting populations was seeded with a solution produced by a simple greedy heuristic 
-        #in order to give the GA a good starting point (paper)
-        #population = self.greedy_heuristic(instance,n_vehicles,n_locations)
+        
         '''Evaluate each solution and creating list with the fitness'''
         fitness = []
         self.evolution = []
@@ -686,7 +817,7 @@ class GA:
         while (self.best_fitness is not None and self.best_fitness < objective_value and n_iter < max_iter) or  self.best_fitness is None: #Termination condition
             print("Iteration: ", n_iter, end = "\r")
             self.evolution.append(self.best_fitness)
-            
+           
                     
             for i in range(crossovers):  #Iterations specified in the configuration (10 by default)
                 
@@ -704,33 +835,49 @@ class GA:
                                                    
 
                 '''CROSSOVER'''                                                                                            
-                child1, child2 = self.inspired_crossover_DPX(parent1, parent2)                  
+                child1, child2 = self.inspired_crossover_DPX(parent1, parent2)
+                child3, child4 = self.PMX_crossover(parent1, parent2)
+
                 
                 '''MUTATION''' 
-                if random.random() < proba_mutation[0]:  
-                    _child1, n1 = self.extract_chromosome(child1)
-                    _child2, n2 = self.extract_chromosome(child2)
-                
-                    _child1[n1] = self.in_route_mutation(_child1[n1])
-                    _child2[n2] = self.in_route_mutation(_child2[n2])
+              
+                _child1, n1 = self.extract_chromosome(child1)
+                _child2, n2 = self.extract_chromosome(child2)
+                _child3, n3 = self.extract_chromosome(child3)
+               
+                _child1[n1] = self.in_route_mutation(_child1[n1])
+                _child2[n2] = self.in_route_mutation(_child2[n2])
+                _child3[n3] = self.in_route_mutation(_child3[n3])
 
-                    child1 = self.inverted_transformation(_child1)
-                    child2 = self.inverted_transformation(_child2)
+                child1 = self.inverted_transformation(_child1)
+                child2 = self.inverted_transformation(_child2)
+                child3 = self.inverted_transformation(_child3)
 
-                if random.random() < proba_mutation[1]:
+                if random.random() < 0.5:
                     child1 = self.cross_route_mutation(child1)
                     child2 = self.cross_route_mutation(child2)
-                    
-                if random.random() < proba_mutation[2]:
+                    child3 = self.cross_route_mutation(child3)
+                
+                if random.random() < 0.5:
                     child1 = self.inroute_opt2_mutation(child1)
                     child2 = self.inroute_opt2_mutation(child2)
+                    child3 = self.inroute_opt2_mutation(child3)
+
+                if random.random() < 0.5:
+                    child1 = self.flip_insert_mutation(child1)
+                    child2 = self.flip_insert_mutation(child2)
+                    child3 = self.flip_insert_mutation(child3)
 
                 '''EVALUATION'''
+                
                 f1 = self.fitness(child1, instance)
                 f2 = self.fitness(child2, instance)
+                f3 = self.fitness(child3, instance)
 
-                fitness.append((f1, child1))
-                fitness.append((f2, child2))
+                idx1, idx2, idx3 = self.inverse_fitness_proportion_ranking_selection(fitness+ [(f1, child1), (f2, child2), (f3, child3)], k = 3)
+                if idx1 < len(fitness): fitness[idx1] = (f1, child1)
+                if idx2 < len(fitness): fitness[idx2] = (f2, child2)
+                if idx3 < len(fitness): fitness[idx3] = (f3, child3)
 
                 if self.best_fitness == None or f1 > self.best_fitness:
                     self.best_fitness = f1
@@ -739,25 +886,12 @@ class GA:
                 if self.best_fitness == None or f2 > self.best_fitness:
                     self.best_fitness = f2
                     self.best_solution = child2
+
+                if self.best_fitness == None or f3 > self.best_fitness:
+                    self.best_fitness = f3
+                    self.best_solution = child3
             
-                #selected_offspring = random.choice([child1, child2])      #This will continue with the diversity of the population but other methods can be implemented such as: selecting child with best fitness or by alternancy in each iteration.
-                #population, fitness = self.replace_cmin(fitness, selected_offspring)
                 
-                
-                population, fitness = self.replace_cmin(fitness, child1)
-                population, fitness = self.replace_cmin(fitness, child2)
-            
-            if random.random() < proba_selection[1]:
-                population2 = self.create_population(n_location,n_vehicles,individuals)
-                for s in population2:                                                                                                                                                          
-                    f = self.fitness(s,instance)
-                    fitness.append((f, s))
-                    population.append(s)
-                    if self.best_fitness == None or f > self.best_fitness:          
-                        self.best_fitness = f
-                        self.best_solution = s
-            
-                population, fitness = self.fitness_proportion_ranking_selection(fitness, k = individuals)
 
                     
             n_iter += 1
@@ -768,8 +902,8 @@ class GA:
 
 
 if __name__ == '__main__':
-    a = GA(time_deadline=180,problem_path='instances/instance1.txt',init="cluster",mode="spectral")
-    try:print(a.run())
-    except:print(a.get_best_solution())
+    a = GA(time_deadline=180,problem_path='instances/instance1.txt')
+    try:print(a.run(),1/a.best_fitness)
+    except:print(a.get_best_solution(),1/a.best_fitness)
 
     
