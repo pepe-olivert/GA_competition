@@ -232,7 +232,8 @@ class GA:
         distance_matrix=distance_matrix[1:,1:] #Skip the initial node distances
         
         if mode == "agglomerative":
-            c =AgglomerativeClustering(n_clusters=n_vehicles,affinity="precomputed",linkage="complete")
+            c =AgglomerativeClustering(n_clusters=n_vehicles,metric="precomputed",linkage="complete")
+            #Please note: If your python version is <=3.9 please change metric to affinity.
         
         if mode == "spectral":
             transf_matrix = distance_matrix
