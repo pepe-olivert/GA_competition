@@ -25,6 +25,7 @@ class GA:
         self.best_fitness = None
         self.init = init
         self.mode = mode
+        self.n_vehicles = None
 
         self.evolution = []
         
@@ -35,7 +36,9 @@ class GA:
         """
         Function to get the best solution of the execution of the GA and translated into the desired form.
         """
-        return self.translate_solution(self.best_solution)
+        sol = self.translate_solution(self.best_solution)
+        assert len(sol) == self.n_vehicles
+        return sol
 
     def read_problem_instance(self): 
         """
@@ -229,7 +232,7 @@ class GA:
         distance_matrix=distance_matrix[1:,1:] #Skip the initial node distances
         
         if mode == "agglomerative":
-            c =AgglomerativeClustering(n_clusters=n_vehicles,metric="precomputed",linkage="complete")
+            c =AgglomerativeClustering(n_clusters=n_vehicles,affinity="precomputed",linkage="complete")
         
         if mode == "spectral":
             transf_matrix = distance_matrix
@@ -691,7 +694,7 @@ class GA:
                         break
         return selected
     
-    def PMX_crossover(self, parent1, parent2, seed=42):
+    def PMX_crossover(self, P1, P2, seed=42):
         '''
         Function to apply the PMX crossover
 
@@ -703,6 +706,8 @@ class GA:
         :return: The children.
         :rtype: list,list
         '''
+        parent1 = P1.copy()
+        parent2 = P2.copy()
         rng = np.random.default_rng(seed=seed)
         next = -1
         for i in range(len(parent1)):
@@ -729,11 +734,18 @@ class GA:
             for i in np.concatenate([np.arange(0,cutoff_1), np.arange(cutoff_2,len(p1))]):
                 candidate = p2[i]
                 while candidate in p1[cutoff_1:cutoff_2] and candidate: # allows for several successive mappings
-                    #print(f"Candidate {candidate} not valid in position {i}") # DEBUGONLY
                     candidate = p2[np.where(p1 == candidate)[0][0]]
                 offspring[i] = candidate
             offspring = list(offspring)
             offspring = [x*int(x > 0) for x in offspring]
+            assert len(offspring) == len(parent1)
+            while offspring.count(0) > self.n_vehicles-1:
+                for x in set(parent1):
+                    if x not in offspring and x>0:
+                        offspring[offspring.index(0)] = x
+                        break
+            assert all(x.count(0) == self.n_vehicles-1 for x in [offspring])
+            assert all(x>=0 for x in offspring)
             return offspring
 
         offspring1 = PMX_one_offspring(parent1, parent2)
@@ -791,9 +803,9 @@ class GA:
 
         """
         
-
         '''Initialize population'''
-        n_location,n_vehicles,instance = self.read_problem_instance()     
+        n_location,n_vehicles,instance = self.read_problem_instance()
+        self.n_vehicles = n_vehicles     
         if self.init == "normal":     
             population = self.create_population(n_location,n_vehicles,individuals) 
         else:
@@ -834,6 +846,8 @@ class GA:
                 '''CROSSOVER'''                                                                                            
                 child1, child2 = self.inspired_crossover_DPX(parent1, parent2)
                 child3, child4 = self.PMX_crossover(parent1, parent2)
+
+                assert all(x.count(0) == n_vehicles-1 for x in [child3])
 
                 
                 '''MUTATION''' 
